@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sovereign Nexus V19.5</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        .page { display: none; animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .matrix-btn { transition: all 0.2s; cursor: pointer; }
+        .matrix-btn:hover { transform: scale(1.15); filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: white; border-left: 6px solid #10b981; padding: 15px 25px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); animation: slideIn 0.3s ease-out; font-weight: bold; font-size: 14px; color: #0f172a; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        .draft-pill { animation: popIn 0.2s ease-out; }
+        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+        @media print { 
+            @page { margin: 1cm; }
+            html, body { height: auto !important; overflow: visible !important; display: block !important; background: white !important; }
+            aside, main > header, #auth-gate, #toast-container, #modal-add-partner, #modal-edit-partner { display: none !important; }
+            #modal-statement, #print-modal { position: relative !important; background: white !important; inset: auto !important; padding: 0 !important; display: block !important; }
+            #print-area, #print-paper { box-shadow: none !important; border: none !important; width: 100% !important; max-width: 100% !important; border-radius: 0 !important; margin: 0 !important; padding: 0 !important; }
+            #st-details { max-height: none !important; overflow: visible !important; border: none !important; }
+            tr { page-break-inside: avoid !important; }
+            .no-print { display: none !important; }
+            main { padding: 0 !important; margin: 0 !important; }
+        }
+    </style>
+</head>
+<body class="text-slate-800 flex h-screen selection:bg-indigo-200">
+
+    <div id="toast-container"></div>
+
+    <div id="auth-gate" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-4">
+        <div class="bg-white p-12 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-800 text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 to-emerald-500"></div>
+            <div class="w-20 h-20 bg-slate-900 text-white rounded-2xl flex items-center justify-center text-3xl font-black mx-auto mb-6 shadow-lg shadow-slate-900/20">V19.5</div>
+            <h1 class="text-3xl font-black mb-2 tracking-tight">NEXUS OS</h1>
+            <p class="text-slate-500 mb-8 font-medium text-xs">Yönetici için 'admin', Ortak için 'TC Kimlik' giriniz.</p>
+            <input type="text" id="l-user" placeholder="Admin veya TC Kimlik No" class="w-full p-4 mb-4 bg-slate-50 rounded-xl border font-bold text-center outline-none focus:ring-2 ring-slate-900">
+            <input type="password" id="l-pass" placeholder="Şifre" class="w-full p-4 mb-8 bg-slate-50 rounded-xl border font-bold text-center outline-none focus:ring-2 ring-slate-900">
+            <button onclick="login()" class="w-full bg-slate-900 text-white p-4 rounded-xl font-black tracking-widest hover:bg-indigo-600 transition-all shadow-xl">SİSTEME GİRİŞ YAP</button>
+            <p id="l-err" class="text-red-500 text-sm mt-4 font-bold"></p>
+        </div>
+    </div>
+
+    <aside class="w-[300px] bg-slate-900 text-white flex flex-col shrink-0 border-r border-slate-800 relative z-20 no-print">
+        <div class="p-8 pb-6">
+            <h2 class="text-3xl font-black tracking-tighter text-white">APEX<span class="text-indigo-500" id="sidebar-version">19.5</span></h2>
+            <p class="text-[10px] text-slate-500 uppercase tracking-widest mt-1 font-bold" id="sidebar-role">Executive Report Edition</p>
+        </div>
+        <nav class="flex-grow px-4 py-2 space-y-2 overflow-y-auto" id="nav-menu"></nav>
+        <div class="p-6">
+            <button onclick="location.reload()" class="w-full bg-slate-800 text-slate-400 hover:text-red-400 p-4 rounded-xl font-bold text-sm hover:bg-slate-800 transition border border-slate-700">🚪 GÜVENLİ ÇIKIŞ</button>
+        </div>
+        <div class="py-5 text-center mt-auto border-t border-slate-800/80 bg-slate-950/50">
+            <span class="text-[9px] text-slate-500 font-black uppercase tracking-[0.4em] opacity-50 hover:opacity-100 hover:text-indigo-400 transition-all duration-300 cursor-default select-none">
+                Designed by MSU
+            </span>
+        </div>
+    </aside>
+
+    <main class="flex-grow flex flex-col relative h-screen bg-slate-50/50 no-print">
+        <header class="bg-white/80 backdrop-blur-md border-b border-slate-200 px-10 py-5 flex justify-between items-center z-10 sticky top-0">
+            <div><h2 class="text-2xl font-black tracking-tight text-slate-800" id="header-title">Analiz</h2></div>
+            <div class="flex items-center gap-4 bg-white p-2 border rounded-2xl shadow-sm" id="topbar-project-selector">
+                <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600 font-black">P</div>
+                <select id="global-prj-sel" onchange="refreshEngine()" class="bg-transparent border-none font-black text-slate-700 w-64 outline-none cursor-pointer text-sm"></select>
+            </div>
+            <div id="topbar-member-info" class="hidden font-black text-indigo-600 bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100"></div>
+        </header>
+
+        <div class="flex-grow overflow-y-auto p-10 relative">
+            
+            <section id="p-dash" class="page max-w-[90rem] mx-auto admin-only">
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <h1 class="text-5xl font-black tracking-tight mb-3" id="d-prj-name">Proje Adı</h1>
+                        <span id="d-status-badge" class="px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border"></span>
+                    </div>
+                    <button onclick="shareBilanco()" class="bg-[#25D366] text-white px-6 py-4 rounded-2xl font-black shadow-xl shadow-green-500/20 hover:bg-green-500 hover:scale-[1.02] transition-all flex items-center gap-3">
+                        <span class="text-xl">💬</span> BİLANÇOYU WHATSAPP'A AT
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-4 gap-6 mb-8" id="d-stats"></div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                    <div class="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full blur-2xl -z-10 -mr-10 -mt-10"></div>
+                        <div class="flex justify-between items-end mb-4">
+                            <div><h3 class="font-black text-slate-800 text-lg">Ortak Tahsilat Hızı</h3><p class="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">Hedefe Göre Toplanan</p></div>
+                            <span id="d-col-pct" class="text-4xl font-black text-emerald-500 tracking-tighter"></span>
+                        </div>
+                        <div class="w-full bg-slate-100 h-4 rounded-full overflow-hidden shadow-inner border border-slate-200"><div id="d-col-bar" class="bg-emerald-500 h-full rounded-full transition-all duration-1000"></div></div>
+                    </div>
+                    <div class="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full blur-2xl -z-10 -mr-10 -mt-10"></div>
+                        <div class="flex justify-between items-end mb-4">
+                            <div><h3 class="font-black text-slate-800 text-lg">Hakediş / Gider Ödemesi</h3><p class="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">Hedefe Göre Harcanan</p></div>
+                            <span id="d-out-pct" class="text-4xl font-black text-indigo-500 tracking-tighter"></span>
+                        </div>
+                        <div class="w-full bg-slate-100 h-4 rounded-full overflow-hidden shadow-inner border border-slate-200"><div id="d-out-bar" class="bg-indigo-500 h-full rounded-full transition-all duration-1000"></div></div>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-10 rounded-[2rem] border border-slate-200 shadow-sm mb-10">
+                    <h3 class="font-black text-slate-800 text-lg mb-6">Dönemsel Tahsilat Performansı</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4" id="d-months"></div>
+                </div>
+            </section>
+
+            <section id="p-treasury" class="page max-w-[90rem] mx-auto admin-only">
+                <h1 class="text-5xl font-black tracking-tight mb-8">Hazine & Kasa Giderleri</h1>
+                <div class="grid grid-cols-3 gap-8 mb-10" id="t-stats"></div>
+                <div class="grid grid-cols-12 gap-8">
+                    <div class="col-span-4 bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm h-fit">
+                        <h3 class="text-xl font-black mb-6 border-b border-slate-100 pb-4 text-indigo-900">Kasadan Gider Çıkışı</h3>
+                        <div class="space-y-4">
+                            <div><label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Gider Kategorisi</label><select id="t-cat" class="w-full p-4 bg-slate-50 border rounded-xl font-bold outline-none focus:ring-2 ring-indigo-500"><optgroup label="Ödemeler"><option>Sözleşme Peşinatı</option><option>Taksit</option><option>Yönetim Gideri</option></optgroup></select></div>
+                            <div><label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Tutar (TL)</label><input type="number" id="t-val" placeholder="0.00" class="w-full p-4 bg-slate-50 border rounded-xl font-black text-indigo-600 outline-none focus:ring-2 ring-indigo-500"></div>
+                            <div><label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Dekont / Açıklama</label><input type="text" id="t-desc" placeholder="Örn: Açıklama..." class="w-full p-4 bg-slate-50 border rounded-xl font-bold outline-none focus:ring-2 ring-indigo-500"></div>
+                            <button onclick="addExpense()" class="w-full bg-indigo-600 text-white font-black p-5 rounded-xl hover:bg-indigo-500 transition-all mt-4 shadow-xl">KASADAN ÇIKIŞ YAP</button>
+                        </div>
+                    </div>
+                    <div class="col-span-8 bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="p-6 border-b border-slate-100 bg-slate-50"><h3 class="font-black text-slate-700">Gider ve Kasa Çıkış Arşivi</h3></div>
+                        <div id="t-history"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="p-matrix" class="page max-w-[100rem] mx-auto admin-only">
+                <div class="flex justify-between items-center mb-8">
+                    <h1 class="text-5xl font-black tracking-tight">Finansal Matris</h1>
+                </div>
+                
+                <div class="relative mb-6">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-5 pointer-events-none"><span class="text-xl">🔍</span></div>
+                    <input type="text" id="search-matrix" onkeyup="filterMatrix()" placeholder="Ortaklarda hızlı arama yapın (İsim girin)..." class="w-full p-5 pl-14 bg-white border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all text-lg">
+                </div>
+
+                <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden" id="matrix-container"></div>
+            </section>
+
+            <section id="p-partners" class="page max-w-7xl mx-auto admin-only">
+                <div class="flex justify-between items-center mb-8">
+                    <h1 class="text-5xl font-black tracking-tight">Ortak & Cari Yönetimi</h1>
+                    <button onclick="openAddPartnerModal()" class="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition">+ YENİ ORTAK EKLE</button>
+                </div>
+                
+                <div class="relative mb-6">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-5 pointer-events-none"><span class="text-xl">🔍</span></div>
+                    <input type="text" id="search-partners" onkeyup="filterPartners()" placeholder="İsim, TC Kimlik veya Telefon ile arama yapın..." class="w-full p-5 pl-14 bg-white border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all text-lg">
+                </div>
+
+                <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden" id="partners-container"></div>
+            </section>
+
+            <section id="p-ops" class="page max-w-5xl mx-auto admin-only">
+                <h1 class="text-5xl font-black tracking-tight mb-8">Hisse Devir İşlemleri</h1>
+                <div class="bg-white p-10 rounded-[2rem] border border-slate-200 shadow-sm">
+                    <div class="grid grid-cols-2 gap-8 mb-8">
+                        <div><label class="block text-xs font-bold text-slate-400 uppercase mb-2">Devreden (Çıkan)</label><select id="o-from" class="w-full p-4 bg-slate-50 border rounded-xl font-bold"></select></div>
+                        <div><label class="block text-xs font-bold text-slate-400 uppercase mb-2">Devredilecek Pay Adedi</label><input type="number" id="o-count" value="1" class="w-full p-4 bg-slate-50 border rounded-xl font-black text-sky-600"></div>
+                    </div>
+                    <div class="border-t border-slate-100 pt-8 mb-8">
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-2">HİSSE KİME DEVREDİLECEK?</label>
+                        <select id="o-to" onchange="toggleNewPartnerFields()" class="w-full p-4 bg-indigo-50 border border-indigo-200 rounded-xl font-black text-indigo-900"></select>
+                    </div>
+                    <div id="new-partner-fields" class="bg-slate-50 p-8 rounded-3xl mb-8 border border-slate-200 border-dashed relative" style="display:none;">
+                        <div class="grid grid-cols-2 gap-4 mt-2">
+                            <input type="text" id="o-new-n" placeholder="Yeni Ad Soyad" class="p-4 border rounded-xl font-bold bg-white">
+                            <input type="text" id="o-new-t" placeholder="Yeni TC Kimlik No" class="p-4 border rounded-xl font-bold bg-white">
+                        </div>
+                    </div>
+                    <button onclick="executeTransfer()" class="w-full bg-slate-900 text-white font-black p-5 rounded-xl shadow-xl hover:bg-indigo-600 transition-all text-lg">DEVİR SÖZLEŞMESİNİ ONAYLA</button>
+                </div>
+            </section>
+
+            <section id="p-risk" class="page max-w-7xl mx-auto admin-only">
+                <div class="flex justify-between items-center mb-8">
+                    <h1 class="text-5xl font-black tracking-tight text-red-600">Risk Radarı (Temerrütler)</h1>
+                    <button onclick="sendBulkWarnings()" class="bg-red-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-red-500 transition shadow-red-500/30 flex items-center gap-2">⚠️ TOPLU İHTAR GÖNDER</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="risk-container"></div>
+            </section>
+
+            <section id="p-board" class="page max-w-7xl mx-auto admin-only">
+                <h1 class="text-5xl font-black tracking-tight mb-8">Resmi Karar Defteri</h1>
+                <div class="grid grid-cols-12 gap-8">
+                    <div class="col-span-4 space-y-6">
+                        <div class="bg-white p-8 rounded-[2rem] border shadow-sm">
+                            <h3 class="font-black mb-4 text-indigo-900 border-b pb-3 flex justify-between items-center">Yönetim Kurulu</h3>
+                            <div id="board-members-list" class="mb-6 space-y-2 max-h-48 overflow-y-auto pr-2"></div>
+                            <div class="border-t border-slate-100 pt-4">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Yeni Üye Ekle</label>
+                                <div class="flex gap-2 mb-2"><input type="text" id="b-new-unvan" placeholder="Ünvan" class="w-1/3 p-3 bg-slate-50 border rounded-xl font-bold text-xs"><select id="b-new-kisi" class="w-2/3 p-3 bg-slate-50 border rounded-xl font-bold text-xs"></select></div>
+                                <button onclick="addBoardMember()" class="w-full bg-slate-900 text-white font-black p-3 rounded-xl text-xs hover:bg-indigo-600 transition shadow-lg">+ KURULA EKLE</button>
+                            </div>
+                        </div>
+                        <div class="bg-white p-8 rounded-[2rem] border shadow-sm">
+                            <h3 class="font-black mb-4 border-b pb-3 text-emerald-700">Yeni Karar Oylama</h3>
+                            <input type="text" id="k-no" placeholder="Protokol No" class="w-full p-3 bg-slate-50 border rounded-xl mb-3 font-bold text-sm">
+                            <textarea id="k-txt" placeholder="Karar Metni..." class="w-full p-3 bg-slate-50 border rounded-xl h-32 font-medium mb-3 text-sm"></textarea>
+                            <button onclick="saveDecision()" class="w-full bg-emerald-600 text-white font-black p-3 rounded-xl shadow-lg hover:bg-emerald-500 transition text-sm">DEFTERE İŞLE</button>
+                        </div>
+                    </div>
+                    <div class="col-span-8 space-y-4" id="board-history"></div>
+                </div>
+            </section>
+
+            <section id="p-docs" class="page max-w-7xl mx-auto admin-only">
+                <h1 class="text-5xl font-black tracking-tight mb-8">Doküman Arşivi</h1>
+                <div class="grid grid-cols-12 gap-8">
+                    <div class="col-span-4 bg-white p-8 rounded-[2rem] border shadow-sm h-fit">
+                        <h3 class="text-xl font-black mb-6 border-b border-slate-100 pb-4 text-indigo-900">Yeni Belge Kaydet</h3>
+                        <div class="space-y-4">
+                            <div><label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Belge Türü</label>
+                                <select id="doc-cat" class="w-full p-4 bg-slate-50 border rounded-xl font-bold"><option>Arsa / Tapu Belgesi</option><option>Resmi Sözleşme</option><option>Kimlik / Vekaletname</option><option>Dekont / Fatura</option><option>Diğer Evraklar</option></select>
+                            </div>
+                            <div><label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Belge Adı / Açıklaması</label><input type="text" id="doc-name" placeholder="Örn: X Parsel Tapu Sureti" class="w-full p-4 bg-slate-50 border rounded-xl font-bold"></div>
+                            <button onclick="addDocument()" class="w-full bg-slate-900 text-white font-black p-5 rounded-xl shadow-xl hover:bg-indigo-600 transition-all mt-4">ARŞİVE EKLE</button>
+                        </div>
+                    </div>
+                    <div class="col-span-8 bg-white rounded-[2rem] border shadow-sm overflow-hidden">
+                        <div class="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center"><h3 class="font-black text-slate-700">Kayıtlı Dijital Evraklar</h3></div>
+                        <div id="docs-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="p-setup" class="page max-w-6xl mx-auto admin-only">
+                <h1 class="text-5xl font-black tracking-tight mb-8">Sistem Kurulumu & Veri</h1>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                    <div class="bg-indigo-900 text-white p-8 rounded-[2rem] shadow-2xl relative overflow-hidden flex flex-col justify-center">
+                        <div class="absolute right-0 top-0 opacity-10 text-[8rem] font-black -mt-8 -mr-8">JSON</div>
+                        <h3 class="text-2xl font-black mb-2 relative z-10">Veri Yedekleme</h3>
+                        <p class="text-indigo-200 font-medium mb-6 text-sm relative z-10">Tüm sistemi yedekleyin veya eski dosyayı yükleyin.</p>
+                        <div class="flex gap-4 relative z-10">
+                            <input type="file" id="f-import" accept=".json" class="bg-indigo-800 text-white p-3 rounded-xl border border-indigo-700 w-full text-xs font-bold">
+                            <button onclick="importJSON()" class="bg-emerald-500 text-white font-black px-6 py-3 rounded-xl hover:bg-emerald-400 transition shadow-lg">YÜKLE</button>
+                            <button onclick="exportJSON()" class="bg-white text-indigo-900 font-black px-6 py-3 rounded-xl shadow-lg hover:bg-slate-100">YEDEK</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-8 rounded-[2rem] border border-red-100 shadow-sm flex flex-col justify-center relative overflow-hidden">
+                        <div class="absolute right-0 top-0 opacity-[0.03] text-[8rem] font-black -mt-8 -mr-8 text-red-500">⚠</div>
+                        <h3 class="text-2xl font-black mb-2 text-red-600 relative z-10">Tehlikeli Bölge</h3>
+                        <p class="text-slate-500 text-sm mb-6 relative z-10">Şu an aktif olan <b class="text-slate-800" id="del-prj-name-preview">Proje</b> sistemden tamamen silinecektir.</p>
+                        <button onclick="deleteCurrentProject()" class="w-full bg-red-50 text-red-600 border border-red-200 font-black p-4 rounded-xl hover:bg-red-600 hover:text-white transition shadow-sm relative z-10">🗑️ AKTİF PROJEYİ KALICI OLARAK SİL</button>
+                    </div>
+                </div>
+
+                <div class="bg-white p-10 rounded-[2rem] border border-slate-200 shadow-sm mb-10">
+                    <h3 class="text-2xl font-black mb-8 pb-4 border-b border-slate-100">Yeni Varlık & Plan İnşası</h3>
+                    <div class="grid grid-cols-3 gap-6 mb-8">
+                        <div><label class="block text-xs font-black text-slate-400 uppercase mb-2">Proje Adı</label><input type="text" id="s-ad" class="w-full p-4 bg-slate-50 border rounded-xl font-bold"></div>
+                        <div><label class="block text-xs font-black text-slate-400 uppercase mb-2">Toplam Pay</label><input type="number" id="s-pay" value="100" class="w-full p-4 bg-slate-50 border rounded-xl font-bold"></div>
+                        <div><label class="block text-xs font-black text-slate-400 uppercase mb-2">Hedef Maliyet (TL)</label><input type="number" id="s-tm" class="w-full p-4 bg-slate-50 border rounded-xl font-black text-indigo-600"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-8 mb-8">
+                        <div class="bg-slate-50 p-6 rounded-2xl border"><h4 class="font-black text-sm mb-4">📌 Tekil Ödeme Ekle</h4><div class="flex gap-2"><input type="month" id="d-m1" class="p-3 border rounded-xl flex-grow font-bold bg-white"><input type="number" id="d-a1" placeholder="Tutar (TL)" class="p-3 border rounded-xl w-32 font-bold bg-white"><button onclick="addSingleDraft()" class="bg-slate-900 text-white font-bold px-6 rounded-xl hover:bg-indigo-600 transition">EKLE</button></div></div>
+                        <div class="bg-slate-50 p-6 rounded-2xl border"><h4 class="font-black text-sm mb-4">🔄 Seri Taksit Döşe</h4><div class="flex gap-2 mb-2"><input type="month" id="d-ms" class="p-3 border rounded-xl flex-grow font-bold bg-white"><span class="flex items-center text-slate-400 font-bold">-</span><input type="month" id="d-me" class="p-3 border rounded-xl flex-grow font-bold bg-white"></div><div class="flex gap-2"><input type="number" id="d-ab" placeholder="Aylık Taksit (TL)" class="p-3 border rounded-xl flex-grow font-bold bg-white"><button onclick="addBulkDraft()" class="bg-indigo-600 text-white font-bold px-6 rounded-xl hover:bg-indigo-500 transition">ÜRET</button></div></div>
+                    </div>
+                    <div class="bg-white border-2 border-slate-100 rounded-2xl p-6 min-h-[100px] mb-8 relative">
+                        <div class="absolute top-4 right-4"><button onclick="clearDraft()" class="text-xs text-red-500 font-bold hover:underline">Sıfırla</button></div>
+                        <h4 class="font-black text-xs text-slate-400 uppercase tracking-widest mb-4">Plan Taslağı</h4>
+                        <div id="draft-list" class="flex flex-wrap gap-2"></div>
+                    </div>
+                    <button onclick="createNewProject()" class="w-full bg-emerald-500 text-white font-black text-lg py-5 rounded-2xl shadow-xl hover:scale-[1.01] transition-all">SİSTEME KAYDET</button>
+                </div>
+            </section>
+
+            <section id="p-member-dash" class="page max-w-7xl mx-auto member-only">
+                <h1 class="text-4xl font-black tracking-tight mb-2">Varlık & Ödeme Özetim</h1>
+                <p class="text-slate-500 mb-8" id="m-welcome-msg">Yükleniyor...</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10" id="m-stats"></div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                    <div class="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-sky-50 rounded-full blur-2xl -z-10 -mr-10 -mt-10"></div>
+                        <div class="flex justify-between items-end mb-4">
+                            <div><h3 class="font-black text-slate-800 text-lg">Proje Genel Tamamlanma</h3><p class="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">Toplam Tahsilat Oranı</p></div>
+                            <span id="m-prj-pct" class="text-4xl font-black text-sky-500 tracking-tighter"></span>
+                        </div>
+                        <div class="w-full bg-slate-100 h-4 rounded-full overflow-hidden shadow-inner border border-slate-200"><div id="m-prj-bar" class="bg-sky-500 h-full rounded-full transition-all duration-1000"></div></div>
+                    </div>
+                    
+                    <div class="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full blur-2xl -z-10 -mr-10 -mt-10"></div>
+                        <div class="flex justify-between items-end mb-4">
+                            <div><h3 class="font-black text-slate-800 text-lg">Şahsi Ödeme İlerlemem</h3><p class="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">Bireysel Taahhüt Durumu</p></div>
+                            <span id="m-my-pct" class="text-4xl font-black text-emerald-500 tracking-tighter"></span>
+                        </div>
+                        <div class="w-full bg-slate-100 h-4 rounded-full overflow-hidden shadow-inner border border-slate-200"><div id="m-my-bar" class="bg-emerald-500 h-full rounded-full transition-all duration-1000"></div></div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-10 rounded-[2rem] border border-slate-200 shadow-sm mb-10">
+                    <h3 class="font-black text-slate-800 text-xl mb-6">Hesap Dökümüm & Taksitlerim</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead><tr class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-widest"><th class="p-4 border-b">Dönem</th><th class="p-4 border-b">Tutar</th><th class="p-4 border-b text-right">Durum</th></tr></thead>
+                            <tbody id="m-payment-list"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="p-member-board" class="page max-w-7xl mx-auto member-only">
+                <h1 class="text-4xl font-black tracking-tight mb-8">Karar Defteri (İlanlar)</h1>
+                <div id="m-board-list" class="space-y-4"></div>
+            </section>
+
+            <section id="p-member-docs" class="page max-w-7xl mx-auto member-only">
+                <h1 class="text-4xl font-black tracking-tight mb-8">Proje Evrak Arşivi</h1>
+                <div class="bg-white rounded-[2rem] border shadow-sm overflow-hidden">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50"><h3 class="font-black text-slate-700">Resmi Belge Fihristi</h3></div>
+                    <div id="m-docs-list"></div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <div id="modal-statement" class="hidden fixed inset-0 bg-slate-900/90 z-[500] items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden my-auto" id="print-area">
+            <div class="bg-slate-900 p-8 text-white relative">
+                <button onclick="toggleModal('modal-statement', false)" class="absolute top-6 right-6 text-slate-400 hover:text-white font-black text-xl no-print">✕</button>
+                <h2 class="text-2xl font-black tracking-tight" id="st-name">Ortak Adı</h2>
+                <p class="text-slate-400 text-sm font-medium mt-1">Müşteri Cari Hesap Özeti / Ekstre</p>
+            </div>
+            <div class="p-8">
+                <div class="grid grid-cols-2 gap-6 mb-8 border-b border-slate-100 pb-8">
+                    <div><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Toplam Hisse Payı</span><b class="text-xl" id="st-pay"></b></div>
+                    <div><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Beklenen Toplam Borç</span><b class="text-xl text-slate-800" id="st-total"></b></div>
+                    <div><span class="text-[10px] font-black text-emerald-500 uppercase tracking-widest block">Gerçekleşen Ödeme</span><b class="text-2xl text-emerald-600" id="st-paid"></b></div>
+                    <div><span class="text-[10px] font-black text-red-500 uppercase tracking-widest block">Kalan / Geciken Bakiye</span><b class="text-2xl text-red-600" id="st-remain"></b></div>
+                </div>
+                <h4 class="font-black text-sm text-slate-800 mb-4">Dönem Detayları</h4>
+                <div class="overflow-y-auto mb-8 border rounded-xl" id="st-details" style="max-height: 20rem;"></div>
+                <div class="flex gap-4 no-print border-t pt-6 mt-4">
+                    <button id="btn-wp" class="flex-grow bg-[#25D366] text-white font-black p-4 rounded-xl shadow-lg shadow-green-500/20 hover:bg-green-500 transition flex justify-center items-center gap-2 text-sm">💬 WhatsApp</button>
+                    <button onclick="window.print()" class="bg-slate-100 text-slate-700 font-black p-4 rounded-xl hover:bg-slate-200 transition flex justify-center items-center text-sm">🖨️ YAZDIR</button>
+                    <button onclick="toggleModal('modal-statement', false)" class="bg-red-50 text-red-600 font-black p-4 rounded-xl hover:bg-red-100 transition flex justify-center items-center text-sm">❌ KAPAT</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-add-partner" class="hidden fixed inset-0 bg-slate-900/80 z-[200] items-center justify-center p-4">
+        <div class="bg-white p-10 rounded-[2.5rem] w-full max-w-lg shadow-2xl border border-slate-100">
+            <h2 class="text-2xl font-black mb-6">Sisteme Ortak Ekle</h2>
+            <div class="space-y-4">
+                <div><label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Ad Soyad (Zorunlu)</label><input type="text" id="np-ad" placeholder="Ad Soyad" class="w-full p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 ring-indigo-500 outline-none"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">TC Kimlik (İsteğe Bağlı)</label><input type="text" id="np-tc" placeholder="TC No" class="w-full p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 ring-indigo-500 outline-none"></div>
+                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Telefon (İsteğe Bağlı)</label><input type="text" id="np-tel" placeholder="05XX..." class="w-full p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 ring-indigo-500 outline-none"></div>
+                </div>
+                <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">E-Posta (İsteğe Bağlı)</label><input type="email" id="np-mail" placeholder="mail@ornek.com" class="w-full p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 ring-indigo-500 outline-none"></div>
+                <div class="flex gap-4 border-t border-slate-100 pt-4 mt-2">
+                    <div class="w-1/2"><label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Pay Adedi</label><input type="number" id="np-pay" value="1" class="w-full p-3 bg-slate-50 border rounded-xl font-black text-sky-600 outline-none"></div>
+                    <div class="w-1/2"><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Giriş Şifresi</label><input type="text" id="np-pass" placeholder="Varsayılan: 123456" class="w-full p-3 bg-slate-50 border rounded-xl font-bold outline-none"></div>
+                </div>
+            </div>
+            <div class="flex gap-4 mt-8">
+                <button onclick="addNewPartner()" class="flex-grow bg-slate-900 text-white font-black p-4 rounded-xl hover:bg-sky-600 transition">KAYDET</button>
+                <button onclick="toggleModal('modal-add-partner', false)" class="px-8 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200">İPTAL</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-edit-partner" class="hidden fixed inset-0 bg-slate-900/80 z-[200] items-center justify-center p-4">
+        <div class="bg-white p-10 rounded-[2.5rem] w-full max-w-lg shadow-2xl border border-slate-100">
+            <h2 class="text-2xl font-black mb-6 text-sky-600">Ortak Bilgilerini Düzenle</h2>
+            <div class="space-y-4">
+                <div><label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Ad Soyad</label><input type="text" id="ep-ad" class="w-full p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 ring-sky-500 outline-none"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">TC Kimlik</label><input type="text" id="ep-tc" class="w-full p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 ring-sky-500 outline-none"></div>
+                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Telefon</label><input type="text" id="ep-tel" class="w-full p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 ring-sky-500 outline-none"></div>
+                </div>
+                <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">E-Posta Adresi</label><input type="email" id="ep-eposta" class="w-full p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 ring-sky-500 outline-none"></div>
+                <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Giriş Şifresi</label><input type="text" id="ep-pass" class="w-full p-3 bg-slate-50 border rounded-xl font-bold focus:ring-2 ring-sky-500 outline-none"></div>
+            </div>
+            <div class="flex gap-4 mt-8">
+                <button onclick="saveEditPartner()" class="flex-grow bg-sky-600 text-white font-black p-4 rounded-xl hover:bg-sky-500 transition shadow-lg shadow-sky-500/20">BİLGİLERİ GÜNCELLE</button>
+                <button onclick="toggleModal('modal-edit-partner', false)" class="px-8 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200">İPTAL</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="print-modal" class="hidden fixed inset-0 bg-slate-900/95 z-[10000] items-start justify-center p-12 overflow-y-auto no-print">
+        <div class="absolute top-10 right-10 flex gap-4 no-print">
+            <button onclick="window.print()" class="bg-sky-500 text-white px-8 py-4 rounded-xl font-black shadow-2xl hover:bg-sky-400">🖨️ YAZDIR</button>
+            <button onclick="toggleModal('print-modal', false)" class="bg-red-500 text-white px-8 py-4 rounded-xl font-black hover:bg-red-400">❌ KAPAT</button>
+        </div>
+        <div id="print-paper" class="bg-white w-[210mm] min-h-[297mm] p-24 shadow-2xl rounded-sm flex flex-col"></div>
+    </div>
+
+    <script>
+        const DEFAULT_DB = {
+            "projeler": {
+                "VIP YAŞAMKENT-GÖKDEMİR STAR": {
+                    "ad": "VIP YAŞAMKENT-GÖKDEMİR STAR", "durum": "Aktif",
+                    "toplam_maliyet": 7250000, "toplam_pay": 27,
+                    "plan": {"2026-05": 75000, "2026-06": 15000, "2026-07": 15000, "2026-08": 15000, "2026-09": 15000, "2026-10": 15000, "2026-11": 15000, "2026-12": 15000, "2027-01": 50000},
+                    "ortaklar": [
+                        {"ad": "AHMET HAMDİ DEMİRÇELİK", "tc": "10000000001", "telefon": "0532 111 22 33", "eposta": "ahmet8210@yahoo.com", "pay": 1, "odemeler": {"2026-05": true}, "sifre": "123"},
+                        {"ad": "SAMET GÜÇKIRAN", "tc": "18326670104", "telefon": "0555 999 88 77", "eposta": "", "pay": 1, "odemeler": {"2026-05": true, "2026-06": true}, "sifre": "123"},
+                        {"ad": "MELİH SİNAN USTAALİOĞLU", "tc": "54436581398", "telefon": "", "eposta": "", "pay": 1, "odemeler": {}, "sifre": "123"}
+                    ],
+                    "kasadan_cikan": 1500000, "kasa_log": [{"tarih": "09.05.2026", "tutar": 1500000, "aciklama": "PROJENİN 1. PEŞİNATI", "kategori": "Sözleşme Peşinatı"}],
+                    "kararlar": [{"no": "2026/01", "tarih": "09.05.2026", "metin": "Proje ön sözleşmesi imzalanmıştır.", "sonuc": "ONAYLANDI"}],
+                    "dokumanlar": [], 
+                    "yonetim": [ { unvan: "TEMSİLCİ", isim: "SAMET GÜÇKIRAN" }, { unvan: "ÜYE", isim: "MELİH SİNAN USTAALİOĞLU" } ]
+                }
+            }
+        };
+
+        let db = JSON.parse(localStorage.getItem('NexusOS_V19')) || DEFAULT_DB;
+        const save = () => { localStorage.setItem('NexusOS_V19', JSON.stringify(db)); };
+        let draftPlan = {};
+        let editingPartnerAd = null; 
+        
+        let currentUser = { role: 'guest', data: null };
+
+        const ADMIN_NAV = [
+            { id: 'p-dash', label: 'Genel Analiz' },
+            { id: 'p-treasury', label: 'Hazine & Giderler' },
+            { id: 'p-matrix', label: 'Tahsilat Matrisi' },
+            { id: 'p-partners', label: 'Ortak & Cari Yönetimi' },
+            { id: 'p-ops', label: 'Hisse Devirleri' },
+            { id: 'p-risk', label: 'Risk Radarı' },
+            { id: 'p-board', label: 'Karar Defteri' },
+            { id: 'p-docs', label: 'Doküman Arşivi' },
+            { id: 'p-setup', label: 'Kurulum & JSON Veri' }
+        ];
+
+        const MEMBER_NAV = [
+            { id: 'p-member-dash', label: 'Cari Özetim' },
+            { id: 'p-member-board', label: 'Karar Defteri' },
+            { id: 'p-member-docs', label: 'Proje Evrakları' }
+        ];
+
+        function showToast(msg, isError = false) {
+            const t = document.createElement('div'); t.className = 'toast';
+            if(isError) t.style.borderLeftColor = '#ef4444'; t.innerText = msg;
+            document.getElementById('toast-container').appendChild(t);
+            setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
+        }
+
+        function login() {
+            const u = document.getElementById('l-user').value.trim();
+            const p = document.getElementById('l-pass').value.trim();
+            
+            if(u === 'admin' && p === 'admin') {
+                currentUser = { role: 'admin', data: null };
+                document.getElementById('auth-gate').style.display='none'; 
+                showToast('Sisteme yönetici olarak giriş yapıldı.'); 
+                initSystem();
+            } else {
+                let foundPartner = null;
+                let foundProject = null;
+                
+                for(let prjAd in db.projeler) {
+                    const prj = db.projeler[prjAd];
+                    const ortak = prj.ortaklar.find(x => x.tc === u && x.sifre === p);
+                    if(ortak) {
+                        foundPartner = ortak;
+                        foundProject = prj;
+                        break;
+                    }
+                }
+
+                if(foundPartner) {
+                    currentUser = { role: 'member', data: { prj: foundProject, ortak: foundPartner } };
+                    document.getElementById('auth-gate').style.display='none'; 
+                    showToast(`Hoşgeldiniz, Sayın ${foundPartner.ad}`); 
+                    initSystem();
+                } else {
+                    document.getElementById('l-err').innerText = 'Hatalı Kimlik veya Şifre!';
+                }
+            }
+        }
+
+        function initSystem() {
+            const nav = currentUser.role === 'admin' ? ADMIN_NAV : MEMBER_NAV;
+            
+            document.getElementById('nav-menu').innerHTML = nav.map(n => `<button onclick="go('${n.id}', this)" class="w-full text-left p-4 rounded-xl font-bold text-[13px] text-slate-400 hover:text-white hover:bg-slate-800 transition mb-1 ${n.id===nav[0].id?'bg-slate-800 text-white':''}">${n.label}</button>`).join('');
+            
+            if(currentUser.role === 'admin') {
+                document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+                document.querySelectorAll('.member-only').forEach(el => el.style.display = 'none');
+                document.getElementById('topbar-project-selector').style.display = 'flex';
+                document.getElementById('topbar-member-info').style.display = 'none';
+                syncSelects();
+                go('p-dash', document.querySelector('#nav-menu button'));
+            } else {
+                document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+                document.querySelectorAll('.member-only').forEach(el => el.style.display = '');
+                document.getElementById('topbar-project-selector').style.display = 'none';
+                document.getElementById('topbar-member-info').style.display = 'block';
+                document.getElementById('topbar-member-info').innerText = `${currentUser.data.prj.ad} | ${currentUser.data.ortak.ad}`;
+                go('p-member-dash', document.querySelector('#nav-menu button'));
+            }
+        }
+
+        function syncSelects() {
+            if(currentUser.role !== 'admin') return;
+            const prjs = Object.keys(db.projeler);
+            document.getElementById('global-prj-sel').innerHTML = prjs.map(p=>`<option value="${p}">${p}</option>`).join('');
+            if(prjs.length > 0) refreshEngine();
+        }
+
+        function go(id, btn) {
+            document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('#nav-menu button').forEach(i=>i.classList.remove('bg-slate-800', 'text-white'));
+            btn.classList.add('bg-slate-800', 'text-white');
+            
+            const navData = currentUser.role === 'admin' ? ADMIN_NAV : MEMBER_NAV;
+            document.getElementById('header-title').innerText = navData.find(x=>x.id===id).label;
+            
+            if(currentUser.role === 'admin') refreshEngine();
+            else refreshMemberEngine();
+        }
+
+        // ==========================================
+        // YENİ: V19.5 BİLANÇO PAYLAŞ MOTORU
+        // ==========================================
+        function shareBilanco() {
+            const pAd = document.getElementById('global-prj-sel').value;
+            const p = db.projeler[pAd];
+            if(!p) return;
+
+            let col = 0; 
+            p.ortaklar.forEach(o => { for(let k in o.odemeler) if(o.odemeler[k]) col += p.plan[k]; });
+            
+            const net = col - (p.kasadan_cikan || 0);
+            const bekleyen = p.toplam_maliyet - col;
+            const tarih = new Date().toLocaleDateString('tr-TR');
+
+            let msg = `🏗️ *${p.ad}*\n📊 *GÜNCEL FİNANSAL BİLANÇO*\n🗓️ Tarih: ${tarih}\n\n`;
+            msg += `🎯 *Hedef Maliyet:* ${p.toplam_maliyet.toLocaleString()} TL\n`;
+            msg += `✅ *Toplanan Nakit:* ${col.toLocaleString()} TL\n`;
+            msg += `⏳ *Bekleyen Alacak:* ${bekleyen > 0 ? bekleyen.toLocaleString() : 0} TL\n`;
+            msg += `💸 *Kasadan Çıkan Gider:* ${(p.kasadan_cikan || 0).toLocaleString()} TL\n`;
+            msg += `💼 *NET LİKİDİTE KASA:* ${net.toLocaleString()} TL\n\n`;
+            msg += `_Sovereign Nexus OS tarafından otomatik oluşturulmuştur._`;
+
+            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+            showToast("Bilanço WhatsApp'a aktarılıyor...");
+        }
+
+        function filterMatrix() {
+            let input = document.getElementById('search-matrix').value.toUpperCase();
+            let trs = document.querySelectorAll('#matrix-container tbody tr');
+            trs.forEach(tr => {
+                let nameCell = tr.cells[0]; 
+                if (nameCell) {
+                    let text = nameCell.textContent || nameCell.innerText;
+                    tr.style.display = text.toUpperCase().indexOf(input) > -1 ? '' : 'none';
+                }
+            });
+        }
+        function filterPartners() {
+            let input = document.getElementById('search-partners').value.toUpperCase();
+            let trs = document.querySelectorAll('#partners-container tbody tr');
+            trs.forEach(tr => { let text = tr.textContent || tr.innerText; tr.style.display = text.toUpperCase().indexOf(input) > -1 ? '' : 'none'; });
+        }
+
+        function sendBulkWarnings() {
+            const pAd = document.getElementById('global-prj-sel').value;
+            const p = db.projeler[pAd];
+            const bugun = new Date();
+            let temerrutler = [];
+
+            p.ortaklar.forEach(o => {
+                let geciken = 0;
+                for(let k in p.plan) {
+                    let vd = new Date(k + "-15");
+                    if(!o.odemeler[k] && bugun > vd.setDate(vd.getDate() + 15)) {
+                        geciken++;
+                    }
+                }
+                if(geciken > 0 && o.telefon) {
+                    temerrutler.push({ o: o, geciken: geciken });
+                }
+            });
+
+            if(temerrutler.length === 0) {
+                return alert("Şu an gecikmede olan ve telefonu sisteme kayıtlı bir ortak bulunmamaktadır.");
+            }
+            
+            if(confirm(`Sistemde telefonu kayıtlı ${temerrutler.length} adet gecikmeli ortağa otomatik WhatsApp ihtarı oluşturulacak.\n\nNot: Tarayıcınızın "Pop-up (Açılır Pencere) Engelleyicisinin" kapalı olduğundan emin olun. Devam edilsin mi?`)) {
+                temerrutler.forEach((t, index) => {
+                    setTimeout(() => {
+                        let wpText = `Sayın *${t.o.ad}*,\n\n*${p.ad}* projesi ödemelerinizde *${t.geciken} dönem* gecikme tespit edilmiştir. Projenin aksamaması adına en kısa sürede ödemenizi yapmanızı önemle rica ederiz.\n\n_Saygılarımızla, Proje Yönetimi_`;
+                        window.open(`https://wa.me/${t.o.telefon.replace(/\s+/g,'')}?text=${encodeURIComponent(wpText)}`, '_blank');
+                    }, index * 600);
+                });
+                showToast(`İhtarlar ${temerrutler.length} ayrı WhatsApp sekmesinde açılıyor...`);
+            }
+        }
+
+        // ==========================================
+        // ADMIN ENGINE
+        // ==========================================
+        function refreshEngine() {
+            if(currentUser.role !== 'admin') return;
+            const pAd = document.getElementById('global-prj-sel').value;
+            const p = db.projeler[pAd]; if(!p) return;
+
+            let searchMatrix = document.getElementById('search-matrix'); if(searchMatrix) searchMatrix.value = '';
+            let searchPartners = document.getElementById('search-partners'); if(searchPartners) searchPartners.value = '';
+
+            if (p.yonetim && !Array.isArray(p.yonetim)) { p.yonetim = []; save(); }
+            if (!p.yonetim) p.yonetim = []; if (!p.dokumanlar) p.dokumanlar = [];
+
+            document.getElementById('d-prj-name').innerText = p.ad;
+            const delPreview = document.getElementById('del-prj-name-preview'); if(delPreview) delPreview.innerText = p.ad;
+
+            const b = document.getElementById('d-status-badge');
+            if(p.durum === 'Tamamlandı') { b.className = 'px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-200 text-slate-600 border border-slate-300'; b.innerText = 'TAMAMLANDI'; }
+            else { b.className = 'px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-700 border border-emerald-200'; b.innerText = 'AKTİF PROJE'; }
+
+            let col = 0; p.ortaklar.forEach(o=>{ for(let k in o.odemeler) if(o.odemeler[k]) col += p.plan[k]; });
+            const net = col - p.kasadan_cikan;
+            const colPct = p.toplam_maliyet > 0 ? (col / p.toplam_maliyet) * 100 : 0;
+            const outPct = p.toplam_maliyet > 0 ? (p.kasadan_cikan / p.toplam_maliyet) * 100 : 0;
+            const hb = p.toplam_maliyet / p.toplam_pay;
+
+            document.getElementById('d-stats').innerHTML = `
+                <div class="bg-white p-6 rounded-[1.5rem] border shadow-sm"><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Hedef Maliyet</span><b class="text-2xl">${p.toplam_maliyet.toLocaleString()} ₺</b></div>
+                <div class="bg-white p-6 rounded-[1.5rem] border border-b-4 border-b-emerald-400 shadow-sm"><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Realize Tahsilat</span><b class="text-2xl text-emerald-600">${col.toLocaleString()} ₺</b></div>
+                <div class="bg-white p-6 rounded-[1.5rem] border border-b-4 border-b-red-400 shadow-sm"><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Bekleyen Alacak</span><b class="text-2xl text-red-600">${(p.toplam_maliyet-col).toLocaleString()} ₺</b></div>
+                <div class="bg-white p-6 rounded-[1.5rem] border border-b-4 border-b-sky-400 shadow-sm"><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Net Nakit Kasa</span><b class="text-2xl text-sky-600">${net.toLocaleString()} ₺</b></div>
+            `;
+            document.getElementById('d-col-bar').style.width = colPct + '%'; document.getElementById('d-col-pct').innerText = `%${colPct.toFixed(1)}`;
+            document.getElementById('d-out-bar').style.width = outPct + '%'; document.getElementById('d-out-pct').innerText = `%${outPct.toFixed(1)}`;
+
+            const aylar = Object.keys(p.plan).sort(); let monthStatsHtml = ''; const totalOrtak = p.ortaklar.length;
+            aylar.forEach(ay => {
+                let odiyenOrtak = 0; let odiyenPay = 0;
+                p.ortaklar.forEach(o => { if(o.odemeler[ay]) { odiyenOrtak++; odiyenPay += o.pay; } });
+                let ayPct = (odiyenPay / p.toplam_pay) * 100;
+                let bgClass = ayPct === 100 ? 'bg-emerald-50 border-emerald-100' : (ayPct === 0 ? 'bg-slate-50 border-slate-100' : 'bg-sky-50 border-sky-100');
+                let tcClass = ayPct === 100 ? 'text-emerald-600' : (ayPct === 0 ? 'text-slate-400' : 'text-sky-600');
+                let barClass = ayPct === 100 ? 'bg-emerald-500' : 'bg-sky-500';
+                monthStatsHtml += `<div class="${bgClass} p-5 rounded-2xl border shadow-sm hover:shadow-md transition-all"><div class="flex justify-between items-center mb-3"><span class="font-black text-slate-700 text-sm">${ay}</span><span class="font-black ${tcClass} text-sm">%${ayPct.toFixed(0)}</span></div><div class="w-full bg-black/5 h-2 rounded-full mb-3 overflow-hidden"><div class="${barClass} h-full" style="width: ${ayPct}%"></div></div><div class="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest"><span>${odiyenOrtak}/${totalOrtak} KİŞİ</span><span>${odiyenPay}/${p.toplam_pay} PAY</span></div></div>`;
+            });
+            document.getElementById('d-months').innerHTML = monthStatsHtml;
+
+            document.getElementById('t-stats').innerHTML = `<div class="bg-indigo-900 text-white p-8 rounded-[2rem] shadow-xl relative overflow-hidden"><div class="absolute right-0 top-0 opacity-10 text-8xl font-black -mt-4 -mr-4">₺</div><span class="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1 block relative z-10">Havuzda Toplanan Para</span><b class="text-4xl tracking-tighter relative z-10">${col.toLocaleString()}</b></div><div class="bg-white p-8 rounded-[2rem] shadow-sm border"><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Toplam Kasa Çıkışı (Giderler)</span><b class="text-4xl text-slate-800 tracking-tighter">${p.kasadan_cikan.toLocaleString()} ₺</b></div><div class="bg-white p-8 rounded-[2rem] shadow-sm border ${net < 0 ? 'border-red-500 bg-red-50' : 'border-emerald-500 bg-emerald-50'}"><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Net Likidite (Kalan Kasa)</span><b class="text-4xl ${net < 0 ? 'text-red-600' : 'text-emerald-600'} tracking-tighter">${net.toLocaleString()} ₺</b></div>`;
+            document.getElementById('t-history').innerHTML = `<table class="w-full text-left text-sm"><thead><tr class="bg-slate-100 text-slate-500 text-[10px] uppercase tracking-widest"><th class="p-4">Tarih</th><th class="p-4">Gider Kategorisi</th><th class="p-4">Açıklama / Belge</th><th class="p-4 text-right">Tutar (Çıkan)</th></tr></thead><tbody>` + p.kasa_log.slice().reverse().map(l=>`<tr class="border-b hover:bg-slate-50"><td class="p-4 font-bold text-slate-400">${l.tarih}</td><td class="p-4 font-black text-indigo-900">${l.kategori}</td><td class="p-4 font-medium">${l.aciklama}</td><td class="p-4 text-right font-black text-red-600">-${l.tutar.toLocaleString()} ₺</td></tr>`).join('') + `</tbody></table>`;
+
+            let mH = `<table class="w-full border-collapse text-sm"><thead><tr><th class="sticky left-0 bg-slate-50 border-r p-5 text-xs font-black uppercase tracking-wider z-10">Ortaklar (A-Z)</th>${aylar.map(a=>`<th class="p-4 text-center text-[10px] font-black whitespace-nowrap bg-slate-50 border-b">${a.split('-')[1]}<br><span class="text-slate-400 font-medium">${p.plan[a].toLocaleString()}₺</span></th>`).join('')}</tr></thead><tbody>`;
+            p.ortaklar.forEach(o=>{
+                mH += `<tr class="border-b hover:bg-slate-50/50 transition"><td class="sticky left-0 bg-white font-bold border-r p-5 text-xs z-10 whitespace-nowrap">${o.ad} <span class="bg-slate-100 px-2 py-1 rounded text-[10px] ml-2 text-slate-500">${o.pay}P</span></td>`;
+                aylar.forEach(a => { const ok = o.odemeler[a]; mH += `<td class="matrix-btn p-3 text-center text-xl border-l border-slate-50 ${ok?'text-emerald-500 bg-emerald-50/30':'text-slate-200'}" onclick="toggleP('${o.ad}','${a}')">${ok?'●':'○'}</td>`; });
+                mH += `</tr>`;
+            });
+            document.getElementById('matrix-container').innerHTML = mH + `</tbody></table>`;
+
+            document.getElementById('partners-container').innerHTML = `<table class="w-full text-left border-collapse text-sm"><thead><tr class="bg-slate-50"><th class="p-5 border-b text-xs font-bold text-slate-500 uppercase tracking-wide">Ortak Adı</th><th class="p-5 border-b text-xs font-bold text-slate-500 uppercase tracking-wide">İletişim & Kimlik</th><th class="p-5 border-b text-xs font-bold text-slate-500 uppercase tracking-wide">Hisse</th><th class="p-5 border-b text-xs font-bold text-slate-500 uppercase tracking-wide text-right">İşlem</th></tr></thead><tbody>${p.ortaklar.sort((a,b)=>a.ad.localeCompare(b.ad)).map(o=>`
+                <tr class="border-b hover:bg-slate-50 transition">
+                    <td class="p-5 font-bold">${o.ad}</td>
+                    <td class="p-5"><div class="text-xs text-slate-500 font-mono mb-1">TC: ${o.tc || '-'}</div><div class="text-[10px] font-bold text-slate-400">TEL: ${o.telefon || '-'} | MAİL: ${o.eposta || '-'}</div></td>
+                    <td class="p-5 font-black text-sky-600">${o.pay}</td>
+                    <td class="p-5 text-right flex justify-end gap-2 items-center h-full mt-2">
+                        <button onclick="openEditPartner('${o.ad}')" class="bg-sky-50 text-sky-600 px-4 py-2 rounded-lg font-bold text-[10px] hover:bg-sky-600 hover:text-white transition tracking-widest uppercase shadow-sm">✏️ DÜZENLE</button>
+                        <button onclick="openStatement('${o.ad}')" class="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg font-bold text-[10px] hover:bg-indigo-600 hover:text-white transition tracking-widest uppercase shadow-sm">📄 EKSTRE</button>
+                        <button onclick="killPartner('${o.ad}')" class="bg-red-50 text-red-600 px-4 py-2 rounded-lg font-bold text-[10px] hover:bg-red-600 hover:text-white transition tracking-widest uppercase shadow-sm">İHRAÇ</button>
+                    </td>
+                </tr>`).join('')}</tbody></table>`;
+
+            let rH = ''; 
+            if(p.durum === 'Tamamlandı') { rH = '<div class="col-span-2 text-center p-20 bg-slate-100 rounded-3xl font-bold text-slate-400">Proje kapalı. Risk takibi pasif.</div>'; }
+            else {
+                p.ortaklar.forEach(o => {
+                    let odenen = 0; for(let k in o.odemeler) if(o.odemeler[k]) odenen += p.plan[k];
+                    let geciken = 0; const bugun = new Date();
+                    for(let k in p.plan) { let vd = new Date(k + "-15"); if(!o.odemeler[k] && bugun > vd.setDate(vd.getDate() + 15)) geciken++; }
+                    if(geciken > 0) rH += `<div class="bg-white p-8 rounded-3xl border-l-[8px] border-red-500 shadow-lg flex justify-between items-center group hover:scale-[1.01] transition-transform"><div><span class="text-[10px] font-black text-red-400 uppercase tracking-widest block mb-1">Temerrüt</span><h4 class="text-lg font-black">${o.ad}</h4><p class="text-red-600 font-bold text-sm mt-1 bg-red-50 inline-block px-3 py-1 rounded-lg">⚠️ ${geciken} DÖNEM GECİKME</p></div><div class="text-right"><span class="text-xs font-bold text-slate-400 block mb-1">KALAN BORÇ</span><b class="text-2xl font-black text-slate-900">${(hb*o.pay-odenen).toLocaleString()} ₺</b></div></div>`;
+                });
+                if(!rH) rH = '<div class="col-span-2 text-emerald-500 font-black text-center p-20 bg-emerald-50 rounded-3xl border-2 border-emerald-100 border-dashed">SİSTEMDE TEMERRÜT BULUNAMADI ✅</div>';
+            }
+            document.getElementById('risk-container').innerHTML = rH;
+
+            document.getElementById('board-history').innerHTML = p.kararlar.slice().reverse().map(k=>`<div class="bg-white p-6 rounded-2xl border shadow-sm flex justify-between items-center"><div><span class="text-[10px] font-black text-sky-500 uppercase tracking-widest">${k.tarih}</span><h4 class="font-black text-lg">Karar No: ${k.no}</h4><p class="text-slate-500 text-sm mt-1 italic">"${k.metin.substring(0,60)}..."</p></div><button onclick="printKarar('${k.no}')" class="bg-slate-100 hover:bg-slate-900 hover:text-white px-6 py-3 rounded-xl font-bold text-xs transition">TUTANAK AL</button></div>`).join('');
+            
+            const partnerOpts = p.ortaklar.map(o=>`<option value="${o.ad}">${o.ad}</option>`).join('');
+            document.getElementById('b-new-kisi').innerHTML = `<option value="">-- Ortak Seçiniz --</option>` + partnerOpts;
+            
+            let ykHtml = '';
+            if(p.yonetim.length === 0) { ykHtml = `<div class="text-slate-400 italic text-sm p-4 text-center">Kurula henüz üye eklenmedi.</div>`; } 
+            else { p.yonetim.forEach((y, idx) => { ykHtml += `<div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl border"><div class="flex flex-col"><span class="text-[10px] font-black text-indigo-500 uppercase tracking-widest">${y.unvan}</span><b class="text-sm text-slate-700">${y.isim}</b></div><button onclick="removeBoardMember(${idx})" class="text-red-500 hover:text-red-700 font-black px-2">✕</button></div>`; }); }
+            document.getElementById('board-members-list').innerHTML = ykHtml;
+
+            document.getElementById('o-from').innerHTML = p.ortaklar.map(o=>`<option value="${o.ad}">${o.ad} (${o.pay} Pay)</option>`).join('');
+            document.getElementById('o-to').innerHTML = `<option value="YENİ">-- YENİ YATIRIMCIYA DEVRET --</option>` + p.ortaklar.map(o=>`<option value="${o.ad}">${o.ad}</option>`).join('');
+            toggleNewPartnerFields();
+
+            if(p.dokumanlar.length === 0) { document.getElementById('docs-list').innerHTML = `<div class="p-10 text-center text-slate-400 font-bold italic">Sisteme kayıtlı belge bulunmamaktadır.</div>`; } 
+            else { document.getElementById('docs-list').innerHTML = `<table class="w-full text-left text-sm"><thead><tr class="bg-slate-100 text-slate-500 text-[10px] uppercase tracking-widest"><th class="p-4">Kayıt Tarihi</th><th class="p-4">Belge Türü</th><th class="p-4">Açıklama</th><th class="p-4 text-right">İşlem</th></tr></thead><tbody>` + p.dokumanlar.slice().reverse().map(d=>`<tr class="border-b hover:bg-slate-50"><td class="p-4 font-bold text-slate-400">${d.tarih}</td><td class="p-4 font-black text-indigo-900">${d.tur}</td><td class="p-4 font-medium">${d.ad}</td><td class="p-4 text-right"><button onclick="deleteDocument('${d.id}')" class="bg-red-50 text-red-600 px-3 py-1 rounded-lg font-bold text-[10px] hover:bg-red-600 hover:text-white transition">SİL</button></td></tr>`).join('') + `</tbody></table>`; }
+        }
+
+        function refreshMemberEngine() {
+            if(currentUser.role !== 'member') return;
+            const p = currentUser.data.prj; const o = currentUser.data.ortak;
+            document.getElementById('m-welcome-msg').innerHTML = `Sayın <b>${o.ad}</b>, ${p.ad} projesindeki resmi kayıtlarınız aşağıdadır.`;
+
+            let prjCol = 0; p.ortaklar.forEach(ox=>{ for(let k in ox.odemeler) if(ox.odemeler[k]) prjCol += p.plan[k]; });
+            const prjPct = p.toplam_maliyet > 0 ? (prjCol / p.toplam_maliyet) * 100 : 0;
+            document.getElementById('m-prj-bar').style.width = prjPct + '%'; document.getElementById('m-prj-pct').innerText = `%${prjPct.toFixed(1)}`;
+
+            const hb = p.toplam_maliyet / p.toplam_pay; const myOwed = hb * o.pay; let myPaid = 0;
+            let myPlanHtml = ''; const bugun = new Date(); let myGeciken = 0;
+
+            Object.keys(p.plan).sort().forEach(a => {
+                let tutar = p.plan[a]; let odendi = o.odemeler[a]; if(odendi) myPaid += tutar;
+                let durumStr = ''; let vd = new Date(a + "-15");
+                if(odendi) { durumStr = '<span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded font-bold text-xs">Ödendi</span>'; } 
+                else if(bugun > vd) { durumStr = '<span class="bg-red-100 text-red-700 px-3 py-1 rounded font-bold text-xs">Gecikmede</span>'; myGeciken++; } 
+                else { durumStr = '<span class="bg-slate-100 text-slate-500 px-3 py-1 rounded font-bold text-xs">Bekliyor</span>'; }
+                myPlanHtml += `<tr class="border-b hover:bg-slate-50 transition"><td class="p-4 font-bold text-slate-700">${a}</td><td class="p-4 font-black">${tutar.toLocaleString()} ₺</td><td class="p-4 text-right">${durumStr}</td></tr>`;
+            });
+            document.getElementById('m-payment-list').innerHTML = myPlanHtml;
+
+            const myPct = myOwed > 0 ? (myPaid / myOwed) * 100 : 0;
+            document.getElementById('m-my-bar').style.width = myPct + '%'; document.getElementById('m-my-pct').innerText = `%${myPct.toFixed(1)}`;
+
+            document.getElementById('m-stats').innerHTML = `<div class="bg-white p-6 rounded-[1.5rem] border shadow-sm border-b-4 border-b-slate-400"><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Toplam Taahhüt (${o.pay} Pay)</span><b class="text-3xl text-slate-800">${myOwed.toLocaleString()} ₺</b></div><div class="bg-white p-6 rounded-[1.5rem] border shadow-sm border-b-4 border-b-emerald-400"><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Gerçekleşen Ödeme</span><b class="text-3xl text-emerald-600">${myPaid.toLocaleString()} ₺</b></div><div class="bg-white p-6 rounded-[1.5rem] border shadow-sm border-b-4 border-b-red-400"><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Kalan / Geciken Borç</span><b class="text-3xl text-red-600">${(myOwed-myPaid).toLocaleString()} ₺</b>${myGeciken>0?`<p class="text-xs text-red-500 font-bold mt-1">⚠️ ${myGeciken} Taksit Gecikmede</p>`:''}</div>`;
+            document.getElementById('m-board-list').innerHTML = p.kararlar.length === 0 ? '<p class="text-slate-400 italic p-6 text-center border rounded-2xl bg-white">İlan edilmiş karar bulunmuyor.</p>' : p.kararlar.slice().reverse().map(k=>`<div class="bg-white p-8 rounded-2xl border shadow-sm"><div><span class="text-[9px] font-black text-sky-500 uppercase tracking-widest">${k.tarih}</span><h4 class="font-black text-xl text-slate-800 mt-1">Karar No: ${k.no}</h4><p class="text-slate-600 font-medium mt-4 leading-relaxed">${k.metin}</p></div></div>`).join('');
+            if(p.dokumanlar.length === 0) { document.getElementById('m-docs-list').innerHTML = `<div class="p-10 text-center text-slate-400 font-bold italic">Sisteme kayıtlı belge bulunmamaktadır.</div>`; } else { document.getElementById('m-docs-list').innerHTML = `<table class="w-full text-left text-sm"><thead><tr class="bg-slate-100 text-slate-500 text-[10px] uppercase tracking-widest"><th class="p-4">Tarih</th><th class="p-4">Belge Türü</th><th class="p-4">Açıklama</th></tr></thead><tbody>` + p.dokumanlar.slice().reverse().map(d=>`<tr class="border-b hover:bg-slate-50"><td class="p-4 font-bold text-slate-400">${d.tarih}</td><td class="p-4 font-black text-indigo-900">${d.tur}</td><td class="p-4 font-medium">${d.ad}</td></tr>`).join('') + `</tbody></table>`; }
+        }
+
+        // ==========================================
+        // YARDIMCI FONKSİYONLAR
+        // ==========================================
+        function deleteCurrentProject() { const pAd = document.getElementById('global-prj-sel').value; if(!pAd) return; if(confirm(`DİKKAT! "${pAd}" projesi ve içindeki TÜM ORTAKLAR, ÖDEMELER ve KARARLAR kalıcı olarak silinecektir.\n\nBu işlem geri alınamaz. Onaylıyor musunuz?`)) { delete db.projeler[pAd]; save(); showToast(`"${pAd}" silindi.`, true); setTimeout(() => location.reload(), 1000); } }
+        function addBoardMember() { const p = db.projeler[document.getElementById('global-prj-sel').value]; const unvan = document.getElementById('b-new-unvan').value.toUpperCase(); const kisi = document.getElementById('b-new-kisi').value; if(!unvan || !kisi) return alert("Hata!"); p.yonetim.push({ unvan: unvan, isim: kisi }); document.getElementById('b-new-unvan').value = ''; save(); refreshEngine(); showToast('Üye eklendi.'); }
+        function removeBoardMember(idx) { const p = db.projeler[document.getElementById('global-prj-sel').value]; p.yonetim.splice(idx, 1); save(); refreshEngine(); showToast('Silindi.', true); }
+        function addDocument() { const p = db.projeler[document.getElementById('global-prj-sel').value]; const cat = document.getElementById('doc-cat').value; const name = document.getElementById('doc-name').value; if(!name) return; p.dokumanlar.push({ id: Date.now().toString(), tarih: new Date().toLocaleDateString('tr-TR'), tur: cat, ad: name.toUpperCase() }); save(); document.getElementById('doc-name').value = ''; refreshEngine(); showToast('Kaydedildi.'); }
+        function deleteDocument(docId) { if(confirm('Sil?')) { const p = db.projeler[document.getElementById('global-prj-sel').value]; p.dokumanlar = p.dokumanlar.filter(d => d.id !== docId); save(); refreshEngine(); showToast('Silindi.', true); } }
+        function addExpense() { const p = db.projeler[document.getElementById('global-prj-sel').value]; const val = +document.getElementById('t-val').value; const desc = document.getElementById('t-desc').value; const cat = document.getElementById('t-cat').value; if(!val || !desc) return; p.kasadan_cikan += val; p.kasa_log.push({ tarih: new Date().toLocaleDateString('tr-TR'), tutar: val, aciklama: desc.toUpperCase(), kategori: cat }); save(); document.getElementById('t-val').value = ''; document.getElementById('t-desc').value = ''; showToast('Kasa çıkışı yapıldı.'); refreshEngine(); }
+        function toggleNewPartnerFields() { document.getElementById('new-partner-fields').style.display = document.getElementById('o-to').value === 'YENİ' ? 'block' : 'none'; }
+        function addSingleDraft() { const m = document.getElementById('d-m1').value; const a = +document.getElementById('d-a1').value; if(!m || !a) return; draftPlan[m] = a; renderDraft(); document.getElementById('d-a1').value = ''; showToast('Eklendi.'); }
+        function addBulkDraft() { const s = document.getElementById('d-ms').value; const e = document.getElementById('d-me').value; const a = +document.getElementById('d-ab').value; if(!s || !e || !a) return; let d1 = new Date(s + "-01"); let d2 = new Date(e + "-01"); while(d1 <= d2) { let m = `${d1.getFullYear()}-${(d1.getMonth()+1).toString().padStart(2,'0')}`; draftPlan[m] = a; d1.setMonth(d1.getMonth() + 1); } renderDraft(); showToast('Oluşturuldu.'); }
+        function removeDraftItem(monthKey) { delete draftPlan[monthKey]; renderDraft(); }
+        function renderDraft() { let h = ''; Object.keys(draftPlan).sort().forEach(k => { h += `<div class="draft-pill bg-sky-50 border border-sky-100 pl-4 pr-2 py-2 rounded-xl text-sm shadow-sm flex items-center gap-3"><span class="font-bold text-slate-700">${k}</span><span class="font-black text-sky-600">${draftPlan[k].toLocaleString()}₺</span><button onclick="removeDraftItem('${k}')" class="bg-red-100 text-red-500 hover:bg-red-500 hover:text-white rounded-lg w-6 h-6 flex items-center justify-center font-black transition-all">✕</button></div>`; }); document.getElementById('draft-list').innerHTML = h || '<span class="text-sm text-slate-400 font-medium italic">Taslak boş...</span>'; }
+        function clearDraft() { draftPlan = {}; renderDraft(); }
+        function createNewProject() { const ad = document.getElementById('s-ad').value; if(!ad) return; if(Object.keys(draftPlan).length === 0) return; db.projeler[ad] = { ad, durum: "Aktif", toplam_maliyet: +document.getElementById('s-tm').value, toplam_pay: +document.getElementById('s-pay').value, plan: JSON.parse(JSON.stringify(draftPlan)), ortaklar: [], kasadan_cikan: 0, kasa_log: [], kararlar: [], dokumanlar: [], yonetim: [] }; save(); syncSelects(); document.getElementById('global-prj-sel').value = ad; clearDraft(); refreshEngine(); showToast('Yeni proje inşa edildi!'); }
+        function toggleP(oAd, ay) { const p = db.projeler[document.getElementById('global-prj-sel').value]; if(p.durum === 'Tamamlandı') return; const o = p.ortaklar.find(x=>x.ad === oAd); o.odemeler[ay] = !o.odemeler[ay]; save(); refreshEngine(); }
+        function killPartner(ad) { if(confirm(`${ad} silinsin mi?`)) { const p = db.projeler[document.getElementById('global-prj-sel').value]; p.ortaklar = p.ortaklar.filter(o => o.ad !== ad); save(); refreshEngine(); showToast(`${ad} silindi.`, true); } }
+        function executeTransfer() { const p = db.projeler[document.getElementById('global-prj-sel').value]; const from = p.ortaklar.find(x=>x.ad === document.getElementById('o-from').value); const toVal = document.getElementById('o-to').value; const c = +document.getElementById('o-count').value; if(from.pay < c) return alert('Yetersiz Pay!'); if(toVal !== 'YENİ' && from.ad === toVal) return alert('Hata!'); from.pay -= c; if(toVal === 'YENİ') { p.ortaklar.push({ ad: document.getElementById('o-new-n').value.toUpperCase(), tc: document.getElementById('o-new-t').value, pay: c, odemeler: {}, sifre: "123456" }); } else { p.ortaklar.find(x=>x.ad === toVal).pay += c; } save(); refreshEngine(); showToast('Devir başarılı.'); }
+        function saveDecision() { const p = db.projeler[document.getElementById('global-prj-sel').value]; p.kararlar.push({ no: document.getElementById('k-no').value, tarih: new Date().toLocaleDateString('tr-TR'), metin: document.getElementById('k-txt').value, sonuc: "ONAYLANDI" }); save(); refreshEngine(); showToast('Karar işlendi.'); }
+        function toggleModal(id, show) { const el = document.getElementById(id); if(show) { el.style.display = 'flex'; } else { el.style.display = 'none'; } }
+        
+        function openAddPartnerModal() { document.getElementById('np-ad').value = ''; document.getElementById('np-tc').value = ''; document.getElementById('np-tel').value = ''; document.getElementById('np-mail').value = ''; document.getElementById('np-pay').value = '1'; document.getElementById('np-pass').value = '123456'; toggleModal('modal-add-partner', true); }
+        function addNewPartner() { const p = db.projeler[document.getElementById('global-prj-sel').value]; const ad = document.getElementById('np-ad').value.toUpperCase().trim(); if(!ad) return; p.ortaklar.push({ ad: ad, tc: document.getElementById('np-tc').value, telefon: document.getElementById('np-tel').value, eposta: document.getElementById('np-mail').value, pay: +document.getElementById('np-pay').value || 1, odemeler: {}, sifre: document.getElementById('np-pass').value || "123456" }); save(); toggleModal('modal-add-partner', false); refreshEngine(); showToast('Ortak kaydedildi.'); }
+        function openEditPartner(ad) { const p = db.projeler[document.getElementById('global-prj-sel').value]; const o = p.ortaklar.find(x => x.ad === ad); editingPartnerAd = ad; document.getElementById('ep-ad').value = o.ad; document.getElementById('ep-tc').value = o.tc || ''; document.getElementById('ep-tel').value = o.telefon || ''; document.getElementById('ep-eposta').value = o.eposta || ''; document.getElementById('ep-pass').value = o.sifre || ''; toggleModal('modal-edit-partner', true); }
+        function saveEditPartner() { const p = db.projeler[document.getElementById('global-prj-sel').value]; const o = p.ortaklar.find(x => x.ad === editingPartnerAd); const newAd = document.getElementById('ep-ad').value.toUpperCase().trim(); if(!newAd) return; o.ad = newAd; o.tc = document.getElementById('ep-tc').value; o.telefon = document.getElementById('ep-tel').value; o.eposta = document.getElementById('ep-eposta').value; o.sifre = document.getElementById('ep-pass').value; save(); toggleModal('modal-edit-partner', false); refreshEngine(); showToast('Güncellendi.'); }
+
+        function openStatement(oAd) {
+            const p = db.projeler[document.getElementById('global-prj-sel').value]; const o = p.ortaklar.find(x => x.ad === oAd); const hb = p.toplam_maliyet / p.toplam_pay;
+            let totalOwed = hb * o.pay; let totalPaid = 0; let gecikenAy = 0;
+            let aylarHtml = `<table class="w-full text-sm text-left"><thead><tr class="bg-slate-50"><th class="p-3 border-b text-slate-500">Dönem</th><th class="p-3 border-b text-slate-500">Tutar</th><th class="p-3 border-b text-slate-500">Durum</th></tr></thead><tbody>`;
+            const bugun = new Date();
+            Object.keys(p.plan).sort().forEach(a => {
+                let tutar = p.plan[a]; let odendi = o.odemeler[a]; if(odendi) totalPaid += tutar;
+                let durumStr = ''; let vd = new Date(a + "-15");
+                if(odendi) { durumStr = '<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-bold text-xs">✅ Ödendi</span>'; } 
+                else if(bugun > vd) { durumStr = '<span class="bg-red-100 text-red-700 px-2 py-1 rounded font-bold text-xs">⚠️ Gecikmede</span>'; gecikenAy++; } 
+                else { durumStr = '<span class="bg-slate-100 text-slate-500 px-2 py-1 rounded font-bold text-xs">⏳ Bekliyor</span>'; }
+                aylarHtml += `<tr class="border-b"><td class="p-3 font-bold">${a}</td><td class="p-3">${tutar.toLocaleString()} ₺</td><td class="p-3">${durumStr}</td></tr>`;
+            });
+            aylarHtml += `</tbody></table>`; let remain = totalOwed - totalPaid;
+            let iletisimHtml = ''; if(o.telefon || o.eposta) iletisimHtml = `<br><span class="text-xs text-slate-400 font-normal mt-1 block">${o.telefon || ''} ${o.eposta ? ' | '+o.eposta : ''}</span>`;
+            document.getElementById('st-name').innerHTML = `${o.ad} ${iletisimHtml}`; 
+            document.getElementById('st-pay').innerText = `${o.pay} Pay`; document.getElementById('st-total').innerText = `${totalOwed.toLocaleString()} ₺`; document.getElementById('st-paid').innerText = `${totalPaid.toLocaleString()} ₺`; document.getElementById('st-remain').innerText = `${remain.toLocaleString()} ₺`; document.getElementById('st-details').innerHTML = aylarHtml;
+
+            let wpText = `Sayın *${o.ad}*,\n\n*${p.ad}* projesi kapsamındaki güncel hesap özetiniz aşağıdadır:\n\n📊 *Toplam Hisse Borcu:* ${totalOwed.toLocaleString()} TL\n✅ *Ödenen Tutar:* ${totalPaid.toLocaleString()} TL\n⚠️ *Kalan Bakiye:* ${remain.toLocaleString()} TL\n`;
+            if(gecikenAy > 0) wpText += `\n❗ Sistemimizde gecikmiş ${gecikenAy} taksit görünmektedir. Lütfen kontrollerinizi sağlayınız.\n`; wpText += `\n_Saygılarımızla, Proje Yönetimi_`;
+            document.getElementById('btn-wp').onclick = function() { window.open(`https://wa.me/${o.telefon ? o.telefon.replace(/\s+/g,'') : ''}?text=${encodeURIComponent(wpText)}`, '_blank'); }; toggleModal('modal-statement', true);
+        }
+
+        function printKarar(no) { const p = db.projeler[document.getElementById('global-prj-sel').value]; const k = p.kararlar.find(x=>x.no === no); toggleModal('print-modal', true); let signGrid = ''; if(p.yonetim && p.yonetim.length > 0) { p.yonetim.forEach(y => { signGrid += `<div class="pt-8 border-t border-black flex-1 mx-4"><b>${y.isim}</b><br>${y.unvan}</div>`; }); } else { signGrid = `<div class="pt-8 border-t border-black flex-1 mx-4"><b>İMZA</b></div>`; } document.getElementById('print-paper').innerHTML = `<div class="flex-grow"><h1 class="text-center text-3xl font-serif font-black uppercase mb-10 border-b-2 border-black pb-8">KARAR TUTANAĞI</h1><div class="mb-10 text-sm"><b>NO:</b> ${k.no} <span class="float-right"><b>TARİH:</b> ${k.tarih}</span></div><div class="mb-20 text-lg leading-[2.5] text-justify font-serif indent-10">${k.metin}</div></div><div class="flex justify-between items-center text-center mt-32 text-xs w-full">${signGrid}</div>`; }
+        function exportJSON() { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(db, null, 2)], {type:'application/json'})); a.download = 'Nexus_Data.json'; a.click(); showToast('Yedek indiriliyor...'); }
+        function importJSON() { const f = document.getElementById('f-import').files[0]; if(!f) return; const r = new FileReader(); r.onload = (e) => { db = JSON.parse(e.target.result); save(); location.reload(); }; r.readAsText(f); }
+
+        window.onload = function() { if(db) initSystem(); }
+    </script>
+</body>
+</html>
